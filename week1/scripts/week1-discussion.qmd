@@ -6,23 +6,85 @@ format: html
 editor: visual
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+Load libraries
 
 ```{r}
-1 + 1
+#| message: false
+#| warning: false
+library(tidyverse)
+library(here)
+library(janitor)
+library(lubridate)
+library(usdata)
 ```
 
-You can add options to executable code like this
+Load and inspect raw data
 
 ```{r}
-#| echo: false
-2 * 2
+#| message: false
+#| warning: false
+fracking <- read_csv(here::here("week1", "data", "registryupload_1.csv")) 
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+Inspection notes:
+
+-   Data is not tidy. We need to wrangle the data.
+
+-   Clean names, remove nans, clean dates
+
+Explore data
+
+```{r}
+dim(fracking)
+
+view(fracking)
+```
+
+```{r}
+# Step 3. Clean/Wrangle the data
+
+fracking_clean <-
+  fracking |>
+  clean_names() |> #a. convert all column names from CamelCase to snake_case
+  mutate(job_start_date = str_remove(job_start_date, " AM")) |> #b. remove AM from the job_start_date
+  mutate(datetime_start = mdy_hms(job_start_date)) |> #c.
+  mutate(year = year(datetime_start)) |> #d.
+  select(datetime_start, year, state_name, well_name, total_base_water_volume) |> #e.
+  mutate(state_name = str_to_title(state_name)) |> #f.
+  filter(!str_detect(state_name, "\\?")) |> # g. use \\ back splash to not read ? as operand, ! is telling us not to filter xx
+  mutate(state_name = ifelse(
+    test = str_length(state_name) == 2,
+    yes = abbr2state(state_name),
+    no = state_name
+  )) |> # h. 
+  mutate(state_name = case_when(
+    state_name == "Colordao" ~ "Colorado",
+    state_name == "Loiusiana" ~ "Louisiana",
+    state_name == "Louisianna" ~ "Louisiana",
+    state_name == "Lousiana" ~ "Louisiana",
+    state_name == "New Mexcio" ~ "New Mexico",
+    state_name == "Norh Dakota" ~ "North Dakota",
+    state_name == "Norht Dakota" ~ "North Dakota",
+    state_name == "North  Dakota" ~ "North Dakota",
+    state_name == "North Dakata" ~ "North Dakota",
+    state_name == "North Dakotta" ~ "North Dakota",
+    state_name == "Noth Dakota" ~ "North Dakota",
+    state_name == "Pennslvania" ~ "Pennsylvania",
+    state_name == "Pennsylavania" ~ "Pennsylvania",
+    state_name == "Pennsylvanya" ~ "Pennsylvania",
+    state_name == "Penssylvania" ~ "Pennsylvania",
+    state_name == "Texasa" ~ "Texas",
+    state_name == "Texs" ~ "Texas", 
+    state_name == "West Viginia" ~ "West Virginia",
+    state_name == "Wyominng" ~ "Wyoming", 
+    TRUE ~ state_name # copy over rest of state names from as-is
+  )) |> #i. 
+  filter(!state_name %in% c("Beaver", "Beckham", "Harper", "Hemphill", "Midland", "Red River", "Rosevelt", "Rusk", "State", "Ward"))
+  
+
+
+
+  
+  
+  
+```
